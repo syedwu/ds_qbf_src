@@ -10,7 +10,7 @@ tmux split-window -t 'docker-bind:0' -v 'docker compose up ns1_example client1'
 sleep 5
 tmux split-window -t 'docker-bind:0' -h 'docker compose up resolver'
 sleep 5
-tmux split-window -t 'docker-bind:0.0' -v 'docker exec -it build-client1-1 /bin/bash'
+tmux split-window -t 'docker-bind:0.0' -v 'docker exec -it build-client1-1 /bin/bash'  # Seems OK
 sleep 5
 tmux send-keys -t docker-bind:0.1 'dig +tries=1 +timeout=10 @172.20.0.2 test.example' Enter
 sleep 5
