@@ -180,8 +180,8 @@ create_rr_f(ResourceRecord **out, char *name, unsigned char *name_bytes, size_t 
     rr->ttl = ttl;
 
     if (rr->type == 46) {
-//        const char SIG_ALG = rdata[2];;
-        int SIG_SIZE = get_alg_sig_pk_size(rr->type, rdata);;
+//        const char SIG_ALG = rdata[2];
+        int SIG_SIZE = get_alg_sig_pk_size(rr->type, rdata);
         if (!((0 <= sig_start_idx) && (sig_start_idx <= sig_end_idx) && (sig_end_idx < SIG_SIZE))) {
             rr->rdsize = 0;
             *out = rr;
@@ -237,7 +237,7 @@ create_rr_f(ResourceRecord **out, char *name, unsigned char *name_bytes, size_t 
         return 0;
 
     } else if (rr->type == 48) {
-//        const char PK_ALG = rdata[3];;
+//        const char PK_ALG = rdata[3];
         int PK_SIZE = get_alg_sig_pk_size(rr->type, rdata);
         if (!((0 <= pk_start_idx) && (pk_start_idx <= pk_end_idx) && (pk_end_idx < PK_SIZE))) {
             rr->rdsize = 0;
@@ -305,7 +305,9 @@ int calc_num_sig_bytes(uint16_t rdsize, unsigned char *rdata) {
 
 int get_alg_sig_pk_size(uint16_t type, unsigned char *rdata) {
     if (type == 46) {
-        const char SIG_ALG = rdata[2];;
+	printf("\nGetting ---type 46.");    
+        const unsigned char SIG_ALG = rdata[2];
+	printf("\nSIG_ALG---%04X\n", SIG_ALG);
         int SIG_SIZE = 0;
 
         if (SIG_ALG == FALCON_512_ALG) {
@@ -320,7 +322,8 @@ int get_alg_sig_pk_size(uint16_t type, unsigned char *rdata) {
         }
         return SIG_SIZE;
     } else if (type == 48) {
-        const char PK_ALG = rdata[3];;
+	printf("\nGetting ---type 48.");
+        const char PK_ALG = rdata[3];
         int PK_SIZE = 0;
 
         if (PK_ALG == FALCON_512_ALG) {

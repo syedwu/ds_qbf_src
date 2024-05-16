@@ -636,7 +636,7 @@ void responding_thread_start(DNSMessage *imsg, struct iphdr *iphdr,
 }
 
 int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
-    printf("\nParsing DNS Message...");
+    printf("\nParsing DNS Message..CHK...");
 
     size_t rrsize = DNSHEADERSIZE;
     int num_dnskey_rr = 0;
@@ -1578,6 +1578,10 @@ uint32_t process_dns_message(struct nfq_q_handle *qh, uint32_t id,
                                 printf("\nDNS Message Complete!\n");
                                 store->m_arr[1]->flags =
                                         store->m_arr[1]->flags & (65023 << 0);    // Mark as Un-Truncated
+				printf("\nsee msg again - if un-trun is working correctly\n");
+				if (debug)
+                                        dnsmessage_to_string(store->m_arr[1]);   // Check if Un-Trac is workign prior to sending to BIND9
+									  
                                 printf("\nSending Full DNS Message to bind9... \n");
                                 send_dns_messsge(store->m_arr[1], iphdr, transport_header, is_tcp, 0);
                             }
