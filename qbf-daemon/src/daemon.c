@@ -35,7 +35,7 @@ uint32_t is_resolver = false;
 int MODE = 2;   // 0:Sequential 1:Parallel-2RTT 2:Parallel-1RTT
 int ALG = 0;    // 0:Falcon-512 1:Dilithium 2:SPHINCS
 bool BYPASS = false;
-bool debug = true; // Set to true to print logs
+bool debug = false; // Set to true to print logs
 
 char *itoa(uint16_t in) {
     char *res = NULL;

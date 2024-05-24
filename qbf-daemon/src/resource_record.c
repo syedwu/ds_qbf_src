@@ -323,7 +323,8 @@ int get_alg_sig_pk_size(uint16_t type, unsigned char *rdata) {
         return SIG_SIZE;
     } else if (type == 48) {
 	printf("\nGetting ---type 48.");
-        const char PK_ALG = rdata[3];
+        const unsigned char PK_ALG = rdata[3]; //fixed
+	printf("\nPK_ALG---%04X\n",PK_ALG);
         int PK_SIZE = 0;
 
         if (PK_ALG == FALCON_512_ALG) {

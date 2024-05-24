@@ -1,6 +1,6 @@
 #! /bin/bash
 
-export MODE=2 # 0 = Sequential, 1 = Parallel-2RTT, 2 = Parallel-1RTT
+export MODE=1 # 0 = Sequential, 1 = Parallel-2RTT, 2 = Parallel-1RTT
 export UDPSIZE="1232" # "stock" = Standard DNS
 export ALG="FALCON512" # "DILITHIUM2", "SPHINCS+-SHA256-128S", "RSASHA256", "ECDSA256"
 export BUILDDIR="$(pwd)/build"
@@ -14,7 +14,7 @@ else
 fi
 
 cd $BUILDDIR
-docker compose down
-docker compose build
+docker-compose down
+docker-compose build
 cd $WORKINGDIR
-./run_exps.bash 0 10 # 10 queries
+

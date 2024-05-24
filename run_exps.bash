@@ -1,10 +1,33 @@
 #! /bin/bash
 
 export NUM_EXPS=$(expr $2 - $1)
+
+# Check if dig_logs exists
+DIR="build/dig_logs"
+
+# Check if the directory exists
+if [ -d "$DIR" ]; then
+    # If it exists, delete the directory and its contents
+    rm -r "$DIR"
+    echo "Directory $DIR has been deleted."
+else
+    # If it does not exist, print a message
+    echo "Directory $DIR does not exist."
+fi
+echo "Creating dig_logs"
+mkdir -p build/dig_logs
+
+# Running all containers and doing initial testing...
 cd build
-mkdir -p dig_logs
 ./tmux-run-docker-part1.bash
+sleep 2
+echo "Setting Network Condition..."
+cd ..
+./set_network_conditions.bash
+sleep 1
+cd build
 echo "Starting experiments..."
+sleep 1
 if [[ $3 != "JUST_RESULTS" ]]
 then
 	for i in $(seq $1 $(expr $2 - 1))
@@ -30,10 +53,4 @@ then
 	done
 fi
 
-export SUM=0
-for i in $(seq $1 $(expr $2 - 1))
-do
-	export MS=$(grep 'Query time: ' dig_logs/run_$i.log | cut -d ' ' -f 4)
-	SUM=$(expr $MS + $SUM)
-done
-echo "Average Resolution Time: $(echo "scale = 2; $SUM / $NUM_EXPS" | bc) ms"
+
