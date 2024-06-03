@@ -35,7 +35,7 @@ uint32_t is_resolver = false;
 int MODE = 2;   // 0:Sequential 1:Parallel-2RTT 2:Parallel-1RTT
 int ALG = 0;    // 0:Falcon-512 1:Dilithium 2:SPHINCS
 bool BYPASS = false;
-bool debug = false; // Set to true to print logs
+bool debug = true; // Set to true to print logs
 
 char *itoa(uint16_t in) {
     char *res = NULL;
@@ -667,15 +667,20 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         size_t rr_outlen;
         rr_to_bytes(rr, &rrout, &rr_outlen);
 
-        if (rr->type == RRSIG) {
+        if (rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) {
             printf("\nRRSIG RR found...");
             num_rrsig_rr += 1;
             int num_sig_frag_bytes = calc_num_sig_bytes(rr->rdsize, rr->rdata);
             printf("\nnum_sig_bytes: %d", num_sig_frag_bytes);
             alg_sig_size = get_alg_sig_pk_size(rr->type, rr->rdata);
             rrsize += rr_outlen - num_sig_frag_bytes + alg_sig_size;
-        } else if (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG)) {
+        } else if (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr->rdata[3] != ECDSA_256_ALG) {
             printf("\nDNSKEY RR found...");
+	    printf("Key ID---%04X\n", rr->rdata[3]);
+            //printf("Just for test ---%04X\n", ECDSA_256_ALG);
+	    if(rr->rdata[3]==ECDSA_256_ALG) {
+		printf("Pre-Qua Key---%04X\n", ECDSA_256_ALG);
+	    }
             num_dnskey_rr += 1;
             int num_dnskey_frag_bytes = rr->rdsize - 4;
             printf("\nnum_dnskey_bytes: %d", num_dnskey_frag_bytes);
@@ -697,14 +702,14 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         size_t rr_outlen;
         rr_to_bytes(rr, &rrout, &rr_outlen);
 
-        if (rr->type == RRSIG) {
+        if (rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) {
             printf("\nRRSIG RR found...");
             num_rrsig_rr += 1;
             int num_sig_frag_bytes = calc_num_sig_bytes(rr->rdsize, rr->rdata);
             printf("\nnum_sig_bytes: %d", num_sig_frag_bytes);
             alg_sig_size = get_alg_sig_pk_size(rr->type, rr->rdata);
             rrsize += rr_outlen - num_sig_frag_bytes + alg_sig_size;
-        } else if (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG)) {
+        } else if (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr->rdata[3] != ECDSA_256_ALG) {
             printf("\nDNSKEY RR found...");
             num_dnskey_rr += 1;
             int num_dnskey_frag_bytes = rr->rdsize - 4;
@@ -727,14 +732,14 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         size_t rr_outlen;
         rr_to_bytes(rr, &rrout, &rr_outlen);
 
-        if (rr->type == RRSIG) {
+        if (rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) {
             printf("\nRRSIG RR found...");
             num_rrsig_rr += 1;
             int num_sig_frag_bytes = calc_num_sig_bytes(rr->rdsize, rr->rdata);
             printf("\nnum_sig_bytes: %d", num_sig_frag_bytes);
             alg_sig_size = get_alg_sig_pk_size(rr->type, rr->rdata);
             rrsize += rr_outlen - num_sig_frag_bytes + alg_sig_size;
-        } else if (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG)) {
+        } else if (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr->rdata[3] != ECDSA_256_ALG) {
             printf("\nDNSKEY RR found...");
             num_dnskey_rr += 1;
             int num_dnskey_frag_bytes = rr->rdsize - 4;
@@ -749,16 +754,16 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         printf("\nAdditional %d size: %ld", i, rr_outlen);
     }
     printf("\nTotal DNS Message size: %ld", rrsize);
-    printf("\nalg_sig_size: %d", alg_sig_size);
-    printf("\nalg_pk_size: %d", alg_pk_size);
-    int total_sig_pk_bytes = num_rrsig_rr * alg_sig_size + num_dnskey_rr * alg_pk_size;
+    printf("\nalg_sig_size (PQ): %d", alg_sig_size);
+    printf("\nalg_pk_size (PQ): %d", alg_pk_size);
+    int total_sig_pk_bytes = num_rrsig_rr * alg_sig_size + num_dnskey_rr * alg_pk_size; //additional adjustment for ECDSA = 64 tested but seems not needed
     printf("\ntotal_sig_pk_bytes: %d", total_sig_pk_bytes);
     printf("\nMAXUDP: %d", MAXUDP);
     printf("\nSavings: %d", savings);
 
-    int num_fixed_bytes = rrsize - total_sig_pk_bytes;
+    int num_fixed_bytes = rrsize - total_sig_pk_bytes; // larger rrsize will lead to a larger num_fixed_bytes
     printf("\nnum_fixed_bytes: %d", num_fixed_bytes);
-    int can_send = MAXUDP - num_fixed_bytes;
+    int can_send = MAXUDP - num_fixed_bytes; // as a result of larger num_fixed-bytes, can_send relevant to first frag will be smaller (logic seems fine)
     int can_send_copy = can_send;
 
     int qname_overhead = 4;     // ?fragnum? overhead. Assuming fragnum to be at most 2 digits.
@@ -778,16 +783,16 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         return num_required_frags;
 
     printf("\ncan_send (1st frag): %d", can_send_copy);
-    printf("\ncan_send (rest frags): %d", can_send);
+    printf("\ncan_send (rest frags): %d", can_send); // this is adjusted size for subseqent frags after 'frag # 1'
 
-    int num_sig_bytes_to_send = alg_sig_size / num_required_frags;
+    int num_sig_bytes_to_send = alg_sig_size / num_required_frags; //only PQ catered for
     int num_pk_bytes_to_send = alg_pk_size / num_required_frags;
-    printf("\nnum_sig_bytes_to_send: %d", num_sig_bytes_to_send);
-    printf("\nnum_pk_bytes_to_send: %d", num_pk_bytes_to_send);
-    int num_sig_bytes_per_frag = (alg_sig_size / num_required_frags) * num_rrsig_rr;
-    printf("\nnum_sig_bytes_per_frag: %d", num_sig_bytes_per_frag);
+    printf("\nnum_sig_bytes_to_send (PQ): %d", num_sig_bytes_to_send);
+    printf("\nnum_pk_bytes_to_send (PQ): %d", num_pk_bytes_to_send);
+    int num_sig_bytes_per_frag = (alg_sig_size / num_required_frags) * num_rrsig_rr; //chunk of only PQ per each frag...
+    printf("\nnum_sig_bytes_per_frag (PQ): %d", num_sig_bytes_per_frag);
     int num_pk_bytes_per_frag = (alg_pk_size / num_required_frags) * num_dnskey_rr;
-    printf("\nnum_pk_bytes_per_frag: %d", num_pk_bytes_per_frag);
+    printf("\nnum_pk_bytes_per_frag (PQ): %d", num_pk_bytes_per_frag);
 
     int rem_space_per_frag, can_send_additional;
 
@@ -808,10 +813,10 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
     for (int j = 1; j <= num_required_frags; j++) {
         printf("\n\nFragment %d", j);
         if (j == 1) {
-            rem_space_per_frag = can_send_copy - (num_sig_bytes_per_frag + num_pk_bytes_per_frag);
+            rem_space_per_frag = can_send_copy - (num_sig_bytes_per_frag + num_pk_bytes_per_frag); //seemingly adjustments for alg0 is catered for in logic
             if (rem_space_per_frag < 0) { // corner case
                 int tmp = ceil((double) abs(rem_space_per_frag) / (num_rrsig_rr + num_dnskey_rr));
-                num_sig_bytes_to_send -= tmp;
+                num_sig_bytes_to_send -= tmp; //reducing size in first frag if needed ...
                 num_pk_bytes_to_send -= tmp;
                 rem_space_per_frag = 0;
             }
@@ -823,7 +828,7 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
             pk_start_idx = 0;
             pk_end_idx = num_pk_bytes_to_send + can_send_additional - 1;
         } else {
-            rem_space_per_frag = can_send - (num_sig_bytes_per_frag + num_pk_bytes_per_frag);
+            rem_space_per_frag = can_send - (num_sig_bytes_per_frag + num_pk_bytes_per_frag); //here on we are only catering PQ...
             printf("\nrem_space_per_frag: %d", rem_space_per_frag);
             can_send_additional = rem_space_per_frag / (num_rrsig_rr + num_dnskey_rr);
             printf("\ncan_send_additional: %d", can_send_additional);
@@ -862,7 +867,7 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         for (int i = 0; i < m->ancount; i++) {
             ResourceRecord *rr = m->answers_section[i];
 
-            if (rr->type == RRSIG || (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG))) {
+            if ((rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) || (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG &&  rr->rdata[3] != ECDSA_256_ALG)) {
                 ResourceRecord *rr_fragment;
                 create_rr_f(&rr_fragment, rr->name, rr->name_bytes,
                             rr->name_byte_len, rr->type, rr->clas, rr->ttl,
@@ -886,7 +891,7 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
         // Authoritative Section
         for (int i = 0; i < m->nscount; i++) {
             ResourceRecord *rr = m->authoritative_section[i];
-            if (rr->type == RRSIG || (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG))) {
+            if ((rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) || (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr->rdata[3] != ECDSA_256_ALG)) {
                 ResourceRecord *rr_fragment;
                 create_rr_f(&rr_fragment, rr->name, rr->name_bytes,
                             rr->name_byte_len, rr->type, rr->clas, rr->ttl,
@@ -914,7 +919,7 @@ int calc_num_required_frags(DNSMessage *msg, int frag_num, bool is_resolver) {
                 arcount++;
                 continue;
             }
-            if (rr->type == RRSIG || (rr->type == DNSKEY && (rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG))) {
+            if ((rr->type == RRSIG && rr->rdata[2] != ECDSA_256_ALG) || (rr->type == DNSKEY && rr->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr->rdata[3] != ECDSA_256_ALG)) {
                 ResourceRecord *rr_fragment;
                 create_rr_f(&rr_fragment, rr->name, rr->name_bytes,
                             rr->name_byte_len, rr->type, rr->clas, rr->ttl,
@@ -1324,6 +1329,9 @@ uint32_t process_dns_message(struct nfq_q_handle *qh, uint32_t id,
                     if (MODE == 1) {
                         for (int i = 2; i <= store->num_required_frags; i++) {
                             printf("\nSending fragment %d query...", i);
+                            if (i == 30){
+                         	exit(-1);
+                            }
                             DNSMessage *m;
                             clone_dnsmessage(store->m_arr[0], &m);
                             m->question_section[0]->qname = qname_2_qnamef(m->question_section[0]->qname, i);
@@ -1486,12 +1494,10 @@ uint32_t process_dns_message(struct nfq_q_handle *qh, uint32_t id,
                                         for (int j = 0; j < msg->ancount; j++) {
                                             ResourceRecord *rr2 = msg->answers_section[j];
 
-                                            if ((rr1->type == RRSIG && rr2->type == RRSIG) ||
-                                                (rr1->type == DNSKEY && rr2->type == DNSKEY &&
-                                                 (rr1->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG) &&
-                                                 (rr2->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG))) {
+                                            if (((rr1->type == RRSIG && rr1->rdata[2] != ECDSA_256_ALG) 
+                                             && (rr2->type == RRSIG && rr2->rdata[2] != ECDSA_256_ALG)) ||
+                                             ((rr1->type == DNSKEY && (rr1->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr1->rdata[3] != ECDSA_256_ALG))
+                                             && (rr2->type == DNSKEY &&(rr2->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr2->rdata[3] != ECDSA_256_ALG)))){
                                                 ResourceRecord *rr_combined;
                                                 if (combine_rr(&rr_combined, rr1->name,
                                                                rr1->name_bytes,
@@ -1516,12 +1522,10 @@ uint32_t process_dns_message(struct nfq_q_handle *qh, uint32_t id,
                                         for (int j = 0; j < msg->nscount; j++) {
                                             ResourceRecord *rr2 = msg->authoritative_section[j];
 
-                                            if ((rr1->type == RRSIG && rr2->type == RRSIG) ||
-                                                (rr1->type == DNSKEY && rr2->type == DNSKEY &&
-                                                 (rr1->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG) &&
-                                                 (rr2->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG))) {
+                                            if (((rr1->type == RRSIG && rr1->rdata[2] != ECDSA_256_ALG)
+                                             && (rr2->type == RRSIG && rr2->rdata[2] != ECDSA_256_ALG)) ||
+                                             ((rr1->type == DNSKEY && (rr1->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr1->rdata[3] != ECDSA_256_ALG))
+                                             && (rr2->type == DNSKEY &&(rr2->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr2->rdata[3] != ECDSA_256_ALG)))){
                                                 ResourceRecord *rr_combined;
                                                 if (combine_rr(&rr_combined, rr1->name,
                                                                rr1->name_bytes,
@@ -1546,12 +1550,10 @@ uint32_t process_dns_message(struct nfq_q_handle *qh, uint32_t id,
                                         for (int j = 0; j < msg->arcount; j++) {
                                             ResourceRecord *rr2 = msg->additional_section[j];
 
-                                            if ((rr1->type == RRSIG && rr2->type == RRSIG) ||
-                                                (rr1->type == DNSKEY && rr2->type == DNSKEY &&
-                                                 (rr1->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG) &&
-                                                 (rr2->rdata[3] !=
-                                                  SPHINCS_PLUS_SHA256_128S_ALG))) {
+                                            if (((rr1->type == RRSIG && rr1->rdata[2] != ECDSA_256_ALG)
+                                             && (rr2->type == RRSIG && rr2->rdata[2] != ECDSA_256_ALG)) ||
+                                             ((rr1->type == DNSKEY && (rr1->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr1->rdata[3] != ECDSA_256_ALG))
+                                             && (rr2->type == DNSKEY &&(rr2->rdata[3] != SPHINCS_PLUS_SHA256_128S_ALG && rr2->rdata[3] != ECDSA_256_ALG)))){
                                                 ResourceRecord *rr_combined;
                                                 if (combine_rr(&rr_combined, rr1->name,
                                                                rr1->name_bytes,

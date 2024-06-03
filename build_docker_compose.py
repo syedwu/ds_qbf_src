@@ -5,15 +5,17 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--bypass", action="store_true")
 parser.add_argument("--maxudp", required=True)
+parser.add_argument("--alg0")
 parser.add_argument("--alg")
 parser.add_argument("--mode")
 args = parser.parse_args()
 BYPASS = args.bypass
 maxudp = int(args.maxudp)
+algorithm0 = str(args.alg0)
 algorithm = str(args.alg)
 mode = str(args.mode)
 
-print("Using algorithm: {} and maxudp: {} and mode: {}".format(algorithm, str(maxudp), str(mode)))
+print("Using algorithms: {} and {}, with  maxudp: {} and mode: {}".format(algorithm0, algorithm, str(maxudp), str(mode)))
 
 if (maxudp != 1232):
     print("maxudp is wrong. maxudp: " + str(maxudp))
@@ -129,7 +131,7 @@ for resolver in resolver_data:
     with open("build/" + resolver["name"] + "/Dockerfile", "a") as f:
         if BYPASS:
             f.write(
-                "CMD /setup_files/install_trust_anchor.bash && rm -rf /dsset/* && iptables -A INPUT -p ip -j NFQUEUE --queue-num 0 && iptables -A OUTPUT -p ip -j NFQUEUE --queue-num 0 && ifconfig && ./qbf/daemon ${LISTENIP} --bypass & named -g -d 3\n")
+	        "CMD /setup_files/install_trust_anchor.bash && rm -rf /dsset/* && iptables -A INPUT -p ip -j NFQUEUE --queue-num 0 && iptables -A OUTPUT -p ip -j NFQUEUE --queue-num 0 && ifconfig && ./qbf/daemon ${LISTENIP} --bypass & named -g -d 3\n")
         else:
             f.write(
                 "CMD /setup_files/install_trust_anchor.bash && rm -rf /dsset/* && iptables -A INPUT -p ip -j NFQUEUE --queue-num 0 && iptables -A OUTPUT -p ip -j NFQUEUE --queue-num 0 && ifconfig && ./qbf/daemon ${LISTENIP} --maxudp " + str(
@@ -187,12 +189,20 @@ for name_server in ns_data:
     docker_file.write("COPY db." + zone + " /usr/local/etc/bind/zones\n")
     if zone == "root":
         zone = "."
-    if algorithm == "RSASHA256":
+    if algorithm0 == "RSASHA256":
         docker_file.write(
-            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm + " -b 2048 -n ZONE " + zone + "\n")
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm0 + " -b 2048 -n ZONE " + zone + "\n")
         docker_file.write(
-            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm + " -b 2048 -n ZONE -f KSK " + zone + "\n")
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm0 + " -b 2048 -n ZONE -f KSK " + zone + "\n")
+        docker_file.write(
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm + " -n ZONE " + zone + "\n")
+        docker_file.write(
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm + " -n ZONE -f KSK " + zone + "\n")
     else:
+        docker_file.write(
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm0 + " -n ZONE " + zone + "\n")
+        docker_file.write(
+            "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm0 + " -n ZONE -f KSK " + zone + "\n")
         docker_file.write(
             "RUN cd /usr/local/etc/bind/zones && dnssec-keygen -a " + algorithm + " -n ZONE " + zone + "\n")
         docker_file.write(

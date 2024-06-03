@@ -38,7 +38,11 @@ function install_trust_anchor() {
 	DSROOT=$(cat /dsset/dsset-. | awk -F'DS' '{print $2}' | awk -F ' ' '{print $1" "$2" "$3" \""$4" "$5"\";"}')
 	echo "" >> /usr/local/etc/named.conf
 	echo "trust-anchors {" >> /usr/local/etc/named.conf
-	echo "	. static-ds "$DSROOT >> /usr/local/etc/named.conf
+	# Read each line in dsset-. and process it
+        while IFS= read -r line; do
+        DSROOT=$(echo "$line" | awk -F'DS' '{print $2}' | awk -F ' ' '{print $1" "$2" "$3" \""$4" "$5"\";"}')
+        echo "  . static-ds $DSROOT" >> /usr/local/etc/named.conf
+        done < /dsset/dsset-.
 	echo "};" >> /usr/local/etc/named.conf
 }
 
